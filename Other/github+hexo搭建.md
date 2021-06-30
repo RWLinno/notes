@@ -65,3 +65,8 @@ https://www.baidu.com/link?url=UrT95-q1QRjGNdrKCLfCN7sLgVDOD9vuS1T1OI6oYjC3Ng_sm
  【Hexo】yilia主题 添加 Subnav 社交图标 CSDN STEAM PSN等等
 
 https://blog.csdn.net/csdn_inside/article/details/89159803
+
+【源码开放】Hexo+Github+Coding 博客butterfly 和 matery 主题 搭建完全教程【整理】
+
+https://chocolate.blog.csdn.net/article/details/105723193
+
