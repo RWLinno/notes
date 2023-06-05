@@ -1,37 +1,25 @@
----
-title : 09-分布式爬虫
-date : 2021-6-20
-tags: 网络爬虫
----
 
 
+# 爬虫学习笔记04-分布式与协程
 
-# 分布式爬虫
+### 分布式
 
-##### 概念
-
-我们需要搭建一个分布式的机群，让其对一组资源进行分布联合爬取。
-
-##### 作用
-
-提升爬取数据的效率
+我们需要搭建一个分布式的机群，让其对一组资源进行分布联合爬取，提升爬取数据的效率。
 
 ##### 如何实现分布式？
 
-###### 安装一个scrapy-redis的组件
+安装一个scrapy-redis的组件。原生的scarapy是不可以实现分布式爬虫的，我们必须要让scrapy结合着scarapy-redis组件一起实现分布式爬虫。
 
-###### 原生的scarapy是不可以实现分布式爬虫的，我们必须要让scrapy结合着scarapy-redis组件一起实现分布式爬虫。
-
-###### 为什么原生的scrapy不可以实现分布式？
+##### 为什么原生的scrapy不可以实现分布式？
 
 调度器不可以被分布机群共享
 管道不可以被分布式机群共享
 
-###### scrapy-redis组件作用
+##### scrapy-redis组件作用
 
 -可以给原生的scrapy框架提供可以被共享的管道和调度器
 
-###### 实现流程
+##### 实现流程
 
 创建一个工程
 创建一个基于CrawlSpider的爬虫文件
@@ -208,3 +196,164 @@ sleep(2)
 bro.quit()
 ```
 
+
+
+### 协程
+
+
+协程（coroutine），也可以被称为微线程，是一种用户态内的上下文切换技术。简而言之，其实就是通过一个线程实现代码块相互切换执行。
+
+##### 实现协程的方式
+
+-greenlet,早期模块
+-yield关键字
+-asyncio装饰器（py3.4）
+-async、await关键字（py3.5）【推荐】
+
+##### grenlet实现协程
+
+##### 环境安装
+
+pip3 install greenlet
+
+```python
+from greenlet import greenlet
+def func1():
+	print(1)  #第一步输出1
+	gr2.switch()#切换到func2函数
+	print(2)#输出2
+	gr2.switch()#切换到func2函数，从上一次执行的位置继续向后执行
+def func2():
+	print(3)
+	gr1.switch()
+	print(4)
+gr1=greenlet(func1)
+gr2=grrenlet(func2)
+gr1.switch()#去执行func1函数
+
+#输出：1324
+```
+
+##### yield关键字
+
+```python
+def func1():
+	yield 1
+	yield from func2()
+	yield 2
+def func2():
+	yield 3
+	yield 4
+f1=func1()
+for item in f1:
+	print(item)
+```
+
+##### asyncio
+
+在python3.4以及之后的版本可以使用。
+
+```python
+import asyncio 
+@asyncio.coroutine
+def func1():
+	print(1)
+	yield from asyncio.sleep(2)#遇到IO耗时操作，自动化切换到tasks中的其他任务
+	print(2)
+
+@asyncio.coroutine
+def func2():
+	print(3)
+	yield from asyncio.sleep(2) #遇到IO耗时操作，自动化切换到tasks的其他任务
+	print(4)
+
+tasks=[
+	asyncio.ensure_future(func1()),
+	asyncio.ensure_future(func2())
+]
+loop=asyncio.get_event_loop()
+loop.run_until_complete(asyncio.wait(tasks))
+```
+
+##### async&await关键字
+
+在python3.5及以后的版本可以使用
+
+```python
+import asyncio 
+async def func1():
+	print(1)
+	await asyncio.sleep(2)
+	print(2)
+	
+async def func2():
+	print(3)
+	await asyncio.sleep(2)
+	print(4)
+	
+tasks=[
+	asyncio.ensure_future(func1()),
+	asyncio.ensure_future(func2())
+]
+loop=asyncio.get_event_loop()
+loop.run_until_complete(asyncio.wait(tasks))
+```
+
+##### 协程的意义
+
+在一个线程中如果遇到IO等待时间，线程不会傻傻等，利用空闲的时候再去干点其他事。
+案例：去下载三张图片（网络IO）。
+
+·普通方式（同步）
+
+```python
+import requests
+def download_image(url):
+    print("开始下载",url)
+    #发送网络请求
+    response=requests.get(url)
+    print('下载完成')
+    #图片保存到本地文件
+    file_name=url.rsplit('_')[-1]
+    with open(file_name,mode='wb') as file_object:
+        file_object.write(response.content)
+
+
+if __name__=='__main__':
+    url_list=[
+        'https://www.baidu.com/img/dong_8f1d47bcb77d74a1e029d8cbb3b33854.gif',
+    ]
+    for item in url_list:
+        download_image(item)
+
+```
+
+##### 异步协程
+
+```python
+#下载图片使用第三方模块aiohttp，请提前安装：
+#pip3 install aiohttp
+import aiohttp
+import asyncio
+
+async def fetch(session,url):
+    print("发送请求",url)
+    async  with session.get|(url,verify_ssl=False) as response:
+        content=await  response.content.read()
+        file_name=url.rsplit('_')[-1]
+        with open(file_name,mode='wb') as file_object:
+            file_object.write(content)
+    print('下载完成',url)
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        url_list=[
+            'https://www.baidu.com/img/dong_8f1d47bcb77d74a1e029d8cbb3b33854.gif',
+        ]
+    tasks=[asyncio.create_task(fetch(session,url)) for url in url_list]
+    await asyncio.wait(tasks)
+
+
+if __name__=='__main__':
+    asyncio.run(main())
+```
