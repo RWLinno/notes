@@ -1,20 +1,6 @@
-# 使用GCN做节点分类预测
+# Graph Learning笔记 - 长尾分布问题
 
-### 实验结果
-
-![image-20230520110603796](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20230520110603796.png)
-
-### 总结
-
-- 配置环境花的时间时间大概是最多的，配置好了CUDA、cudnn、Pytorch等，遇到问题比较多（但都是小问题），不过都解决了。
-- 看了一些关于GCN的讲解，论文中的公式推导大概有点感觉了，不过还是比较抽象。
-- 李沐讲综述的时候提到的一个网址，感觉很有趣https://distill.pub/2021/gnn-intro/
-
-
-
-# 图对抗（顺便跑了）
-
-![image-20230521024435420](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20230521024435420.png)
+分享四篇论文入门图神经网络时的学习笔记。
 
 
 
@@ -40,7 +26,7 @@
 
 ### 实现过程
 
-![image-20230520192919280](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20230520192919280.png)
+![image-20230520192919280](D:\Pictures\blog\image-20230520192919280.png)
 
 ##### Degree-Specific GCN Layer
 
@@ -72,14 +58,13 @@ teacher-student Network是用一个更宽更复杂，但已经训练好的神经
 
 ##### Training Algorithm
 
-![image-20230520193000543](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20230520193000543.png)
+![image-20230520193000543](D:\Pictures\blog\image-20230520193000543.png)
 
 
 
 ### 一些思考
 
-- 所以 graph annotator 要怎么设计得高效快速？按照Paper的说法是一种能够给未标记节点生成伪标签的启发式算法，本质上是也是需要经过训练来提高准确率的，这样的话它应该决定了学生网络的训练效果的阈值了。既然给训练过程分层了，那收敛应该也会变慢，感觉这是一个权衡，毕竟也有可能只对学生网络多迭代几次也能达到同样效果。
-- 这篇论文是2020年的，但RNN应该早就可以用更优秀的结构来代替了？比方说LSTM和Transformer啥的。
+- RNN部分应该可以用更优秀的结构来代替了？比方说LSTM和Transformer啥的。
 - 在稠密图的表现如何？感觉准度应该差不了多少但是计算会比较慢吧，所以感觉应该要先判断图的性质再考虑是否进入SL-DSGCN结构。
 
 
@@ -134,7 +119,6 @@ teacher-student Network是用一个更宽更复杂，但已经训练好的神经
 
 - 这篇论文陌生用的方法好像有点多，有点看不过来，像文中提到的SDNE、ARGA、DDGCN等一系列嵌入方法都没来得及细究，不过大致就是元尾部嵌入要比这些都好就是了
 - 关于few-shot的部分有点像直接用了掩码的思想，总之就是把邻居mask掉去训练。虽然文章的方法是把**询问节点**的k个邻居mask掉，但我觉得直接在整个图上按度数贡献到概率上再随机mask也是可以的。
-- 感觉这个方法会很慢，举个例子我有一个菊花图，中心是A。首先一个问题是其他全是尾部节点，A永远在支持集合中，给的权重太高了；其次是如果不自适应跳数的话，实验中2跳的性能阈值就会很慢很慢，因为这个情况每个点的信息都是整张图所有节点给的。
 
 
 
@@ -159,9 +143,9 @@ teacher-student Network是用一个更宽更复杂，但已经训练好的神经
 ### 分析问题
 
 - 如何发现尾节点缺失的邻域信息？
-  - Tail-GNN uses a novel concept of transferable neighborhood translation to model the variable ties between a target node and its neighbors. This allows it to predict missing neighborhood information for tail nodes and complement their neighborhood aggregation.
+  - 尾部GNN使用可转移邻域转换的新概念来模拟目标节点与其邻居之间的变量联系。这允许它预测尾节点缺失的邻域信息，并补充它们的邻域聚合。
 - 如何在保持节点间通用性的同时，对每个尾节点的缺失信息进行局部定位？
-  - Tail-GNN uses a transferable form of neighborhood translation that can be further localized to suit the local context of each node. This allows Tail-GNN to maintain generality across nodes while still being able to adapt to local contexts and provide accurate predictions for missing neighborhood information.
+  - 使用一种可转移的邻域转换形式，可以进一步本地化以适应每个节点的本地上下文。这使得Tail-GNN在保持节点间通用性的同时，仍然能够适应局部环境，并为缺失的邻域信息提供准确的预测。
 
 ### 方法
 
@@ -185,11 +169,10 @@ $$
 Overall\quad loss:Min_{\Theta}(Max_{\theta_d}(\mathcal L_t +\mu\mathcal L_m -\eta\mathcal L_d))\\
 $$
 
-### 一些思考
+### 一些问题
 
-- 消融实验好像没有讨论到超参数对Tail-GNN的影响，只有某一部分方法缺失的影响，内部的参数到底是怎么定义的？
-- 随机缺失信息应该会导致每一次的准确率都不太一样吧，这是怎么做的比较实验？
-- 这个模型是包含了对比学习？或者说是不是可以用对比学习来优化调参？
+- 消融实验好像没有讨论到超参数对Tail-GNN的影响，在源码里可以继续通过设置一下超参数观察结果去分析。
+- 随机缺失信息应该会导致每一次的准确率不太一样？通过固定随机种子可以做到在相同环境下填充一样的缺失信息，多次运行取平均值和标准差可近似代表准确率。
 
 
 
@@ -237,89 +220,6 @@ $$
 
 ### 一些思考
 
-- Cold Brew只对SCS Work吗？应该可以考虑为一种对low degree节点的通解
-- FCR为什么这样算读不懂，但是感觉计算方式是可以改进的
-- SCS的定义不是孤立点吗？我的理解是在图里是完全没有结构信息的，还是不懂它如何映射。所以是指它是标签缺失的，所以只能用MLP学习自己然后走Student模型吗？
+- Cold Brew只对SCS Work吗？对Low-Degree-Node同样很有效，补充与TailGNN的比较：https://openreview.net/forum?id=1ugNpm7W6E
+- FCR是根据直觉定义的，考虑了节点特征和图结构两种因素，在某种程度上也表示了图节点/特征的重要性。不过感觉计算方式有改进空间。
 
-
-
-### 尝试复现
-
-##### 准备环境
-
-在Github上fork了一份到自己仓库里，它给了requirements，装环境很方便
-
-```python
-conda create -n gtg
-conda activate gtg
-pip install -r requirements.txt
-```
-
-- 报错1:缺失工具链
-
-```
-  error: subprocess-exited-with-error
-
-  × Preparing metadata (pyproject.toml) did not run successfully.
-  │ exit code: 1
-  ╰─> [6 lines of output]
-
-      Cargo, the Rust package manager, is not installed or is not on PATH.
-      This package requires Rust and Cargo to compile extensions. Install it through
-      the system's package manager or via https://rustup.rs/
-
-      Checking for Rust toolchain....
-      [end of output]
-
-  note: This error originates from a subprocess, and is likely not a problem with pip.
-error: metadata-generation-failed
-
-× Encountered error while generating package metadata.
-╰─> See above for output.
-
-note: This is an issue with the package mentioned above, not pip.
-hint: See above for details.
-```
-
-喂给chatgpt，看来是缺少Rust和Cargo工具链，去官网下完之后重开终端就可以了。
-
-- 报错2：python版本不正确
-
-```
-ERROR: Ignored the following versions that require a different python version: 0.7 Requires-Python >=3.6, <3.7; 0.8 Requires-Python >=3.6, <3.7
-ERROR: Could not find a version that satisfies the requirement dataclasses==0.8 (from versions: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
-ERROR: No matching distribution found for dataclasses==0.8
-```
-
-仓库作者没有说Python的版本，但是dataclasses0.7要Python>=3.6且<3.7，torch要python>=3.6.2，我就首先用了3.6。
-
-- 报错3：找不到与要求的 dgl 版本 0.7.0 相匹配的分发版本
-
-```
-ERROR: Could not find a version that satisfies the requirement dgl==0.7.0 (from versions: 0.0.1, 0.1.0, 0.1.2, 0.1.3, 0.2, 0.3, 0.3.1, 0.4, 0.4.1, 0.4.2, 0.4.3, 0.4.3.post1, 0.4.3.post2, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.6.0, 0.6.0.post1, 0.6.1, 0.9.0, 0.9.1, 1.0.0, 1.0.1)
-ERROR: No matching distribution found for dgl==0.7.0
-```
-
-一开始我通过安装更高版本来解决问题，但是发现很多包都会遇到同样的版本不兼容的问题，省级了pip不能解决问题。我索性直接改了requirements.txt，把$dgl,fastparquet,joblib,Mako,mkl-fft,mkl-random,mkl-service,ml-collections$
-
-的指定版本给去掉了。但是最终还是解决不了问题，因为所有版本都不兼容了。最后用了3.8版本的python。意识到作者给出的requirements只是pip list并没有拓扑顺序，所以我就分块去装环境。如果pip没有就用conda装，然后除了mkkl版本没装指定的以外，其余的都没问题了。
-
-![image-20230604111827305](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20230604111827305.png)
-
-##### 尝试运行
-
-通过终端尝试运行以下语句
-
-```
-python main.py --dataset=Cora --train_which=TeacherGNN --whetherHasSE=000 --want_headtail=1 --num_layers=2 --use_special_split=1
-```
-
-报错说我的torch-geometric有问题，但是list已经有了，看来跟torch版本不是很搭，然后我放弃了按照readme里的说法，去网上找torch1.9.0+cu111对应的geometric，发现x64没包。
-
-------------
-
-因为越搞越乱了，重写建了个环境，这次直接装核心依赖，忽略requirements.txt。然后所有的包都没有指定版本(最后是torch2.0.1+cpu)，然后直接跑main.py，遇到没有装的包再pip install，结果work了。![image-20230604152550293](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20230604152550293.png)
-
-*（目前正在下载数据集）*
-
-感觉这四篇论文就看到这里，看看最近能不能用时间（课设比较多）复现一个，然后用另外一篇markdown记录一下。
